@@ -12,16 +12,16 @@ const ITEM_FORMULA_DATA = `searedBeef + mashedPotato = steak
 lettuce + mashedPotato = salad`;
 
 interface ToolFormula {
-  itemCode: String;
-  toolCode: String;
-  itemAmount: Number;
-  requireTime: Number;
-  outputItemCodes: String[];
+  itemCode: string;
+  toolCode: string;
+  itemAmount: number;
+  requireTime: number;
+  outputItemCodes: string[];
 }
 
 interface ItemFormula {
-  itemCodes: String[];
-  outputItemCode: String;
+  itemCodes: string[];
+  outputItemCode: string;
 }
 
 class ToolFormulaHelper {
