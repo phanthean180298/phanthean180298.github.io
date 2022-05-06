@@ -23,6 +23,10 @@ class GameState {
       remainingActiveTime: 0,
     }));
     this.plates = [[], [], []];
+    this.inventories = [
+      { code: "beef", amount: 1 },
+      { code: "potato", amount: 2 },
+    ];
   }
 
   reset() {
@@ -80,15 +84,20 @@ class GameState {
 
   process(delta: number) {
     this.tools = this.tools.map((tool) => {
-      if (tool.remainingActiveTime < delta) {
+      if (tool.remainingActiveTime === 0) return tool;
+
+      if (tool.remainingActiveTime - delta <= 0) {
         tool.remainingActiveTime = 0;
-        tool.itemCode = "";
         const formula = toolFormulaHelper.search(tool.itemCode, tool.code);
+        console.log(formula);
         if (!!formula) {
           formula.outputItemCodes.map((code) => this.grant(code));
         }
+        tool.itemCode = "";
       } else {
-        tool.remainingActiveTime -= delta;
+        tool.remainingActiveTime = parseFloat(
+          (tool.remainingActiveTime - delta).toFixed(2)
+        );
       }
       return tool;
     });
@@ -104,15 +113,16 @@ class GameState {
 
     // push from inventories to tool
     this.ungrant(itemCode);
-
-    this.tools = [
-      ...this.tools,
-      {
-        ...tool,
-        itemCode: itemCode,
-        remainingActiveTime: formula.requireTime,
-      },
-    ];
+    this.tools = this.tools.map((t) => {
+      if (t.code === tool.code) {
+        return {
+          ...tool,
+          itemCode: itemCode,
+          remainingActiveTime: formula.requireTime,
+        };
+      }
+      return t;
+    });
   }
 }
 export default GameState;

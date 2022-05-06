@@ -1,10 +1,13 @@
-import { Vector2, createWhiteTexture, SpriteBatch } from "gdxjs";
+import { Vector2, createWhiteTexture, SpriteBatch, TextRenderer } from "gdxjs";
 import { Actor } from "./actor";
 
 export class BaseObject extends Actor {
   protected bgTexture = null;
 
-  constructor(private glContext: WebGLRenderingContext) {
+  constructor(
+    private glContext: WebGLRenderingContext,
+    textRenderer: TextRenderer
+  ) {
     super();
 
     this.bgTexture = createWhiteTexture(glContext);
