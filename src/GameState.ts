@@ -1,9 +1,7 @@
-import { toolFormulaHelper } from "./util/formulaHelpers";
+import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
 
 const tools = ["chop", "stove"];
 const items = ["beef", "potato"];
-const discsAmount = 3;
-const inventoriesAmount = 4;
 
 interface Tool {
   itemCode: string;
@@ -14,9 +12,9 @@ interface Tool {
 class GameState {
   tools: Tool[] = [];
 
-  inventories: { code: String; amount: Number }[] = [];
+  inventories: { code: string; amount: number }[] = [];
 
-  discs: String[] = [];
+  plates: string[][] = [];
 
   constructor() {
     this.tools = tools.map((tool) => ({
@@ -24,11 +22,59 @@ class GameState {
       code: tool,
       remainingActiveTime: 0,
     }));
+    this.plates = [[], [], []];
+  }
+
+  reset() {
+    this.inventories = [];
+    this.tools = tools.map((tool) => ({
+      itemCode: "",
+      code: tool,
+      remainingActiveTime: 0,
+    }));
+    this.plates = [];
+  }
+
+  ungrant(itemCode: string) {
+    this.inventories = this.inventories.map((i) => {
+      if (i.code === itemCode) {
+        i.amount--;
+      }
+      return i;
+    });
+    this.inventories = this.inventories.filter((i) => i.amount > 0);
   }
 
   grant(code: string) {
     if (!this.inventories.find((i) => i.code === code)) {
       this.inventories.push({ code, amount: 1 });
+    } else {
+      this.inventories = this.inventories.map((i) => {
+        if (i.code === code) {
+          i.amount++;
+        }
+        return i;
+      });
+    }
+  }
+
+  putOnPlate(itemCode: string, plateIndex: number) {
+    const _items = [...this.plates[plateIndex], itemCode];
+    const formula = itemFormulaHelper.search(..._items);
+    if (!formula) {
+      // if don't have any formula, return
+      if (!itemFormulaHelper.searchAvailableFormula(..._items)) {
+        return;
+      } else {
+        // put on plate
+        this.ungrant(itemCode);
+        this.plates[plateIndex].push(itemCode);
+      }
+    } else {
+      // put on plate, process to new inventory, and return to inventories
+      this.plates[plateIndex].length = 0;
+      this.grant(formula.outputItemCode);
+      this.ungrant(itemCode);
     }
   }
 
@@ -41,6 +87,8 @@ class GameState {
         if (!!formula) {
           formula.outputItemCodes.map((code) => this.grant(code));
         }
+      } else {
+        tool.remainingActiveTime -= delta;
       }
       return tool;
     });
@@ -53,6 +101,10 @@ class GameState {
 
     const formula = toolFormulaHelper.search(itemCode, toolCode);
     if (!formula) return;
+
+    // push from inventories to tool
+    this.ungrant(itemCode);
+
     this.tools = [
       ...this.tools,
       {

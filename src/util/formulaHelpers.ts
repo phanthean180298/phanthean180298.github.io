@@ -93,6 +93,14 @@ class ItemFormulaHelper {
     }
     return null;
   }
+
+  searchAvailableFormula(...itemCodes: string[]) {
+    for (const formula of this.itemFormulas) {
+      if (itemCodes.every((val) => formula.itemCodes.includes(val)))
+        return formula;
+    }
+    return null;
+  }
 }
 
 export const toolFormulaHelper = new ToolFormulaHelper();
