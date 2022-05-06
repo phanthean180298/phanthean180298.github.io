@@ -5,7 +5,7 @@ import {
   createViewport,
   createWhiteTexture,
 } from "gdxjs";
-import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
+import GameState from "./GameState";
 
 const WORLD_WIDTH = 600;
 const WORLD_HEIGHT = 1000;
@@ -20,14 +20,10 @@ const init = async () => {
   const whiteTexture = createWhiteTexture(gl);
 
   const batch = createBatch(gl);
-
-  console.log(toolFormulaHelper.search("beef", "chop"));
-  console.log(toolFormulaHelper.search("beef", "stove"));
-
-  // const gameState = new GameManager();
+  const gameState = new GameState();
 
   createGameLoop((delta: any) => {
-    // gameState.process(delta);
+    gameState.process(delta);
     batch.setProjection(camera.combined);
     batch.begin();
     batch.setColor(0, 0, 0, 1);
