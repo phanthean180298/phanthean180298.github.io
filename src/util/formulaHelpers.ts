@@ -9,7 +9,25 @@ slicedPotato + stove * 2 = potatoChip
 bakedPotato + chop * 1.5 = mashedPotato`;
 
 const ITEM_FORMULA_DATA = `searedBeef + mashedPotato = steak
-lettuce + mashedPotato = salad`;
+lettuce + mashedPotato = salad
+potato + beef = curry`;
+
+const inputArray: string[] = [];
+const checkFormulaFulfill = (input: string[], required: string[]): boolean => {
+  if (input.length !== required.length) return false;
+  inputArray.length = 0;
+  for (let code of input) {
+    inputArray.push(code);
+  }
+
+  for (let code of required) {
+    const index = inputArray.indexOf(code);
+    if (index === -1) return false;
+    inputArray.splice(index, 1);
+  }
+
+  return true;
+};
 
 interface ToolFormula {
   itemCode: string;
@@ -90,7 +108,7 @@ class ItemFormulaHelper {
 
   search(...itemCodes: string[]) {
     for (const formula of this.itemFormulas) {
-      if (_.isEmpty(_.xor(itemCodes, formula.itemCodes))) return formula;
+      if (checkFormulaFulfill(itemCodes, formula.itemCodes)) return formula;
     }
     return null;
   }
@@ -98,9 +116,9 @@ class ItemFormulaHelper {
   searchAvailableFormula(...itemCodes: string[]) {
     for (const formula of this.itemFormulas) {
       if (itemCodes.every((val) => formula.itemCodes.includes(val)))
-        return formula;
+        return true;
     }
-    return null;
+    return false;
   }
 }
 
