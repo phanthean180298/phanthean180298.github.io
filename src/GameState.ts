@@ -1,3 +1,4 @@
+import { Vector2 } from "gdxjs";
 import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
 
 const tools = ["chop", "stove"];
@@ -6,6 +7,7 @@ const inventorieTypes = ["stove", "beef"];
 export const GRID_ROW = 5;
 export const GRID_COL = 5;
 export const TOTAL_GEM_COLOR = 4;
+export const DROP_ANIMATION_TIME = 0.2;
 
 interface Tool {
   itemCode: string;
@@ -22,6 +24,7 @@ class GameState {
 
   cells: Cell[] = [];
   random: any;
+  isProcessing = false;
 
   inventories: { code: string; amount: number }[] = [];
   plates: string[][] = [];
@@ -53,10 +56,17 @@ class GameState {
     return this.cells[y * GRID_COL + x];
   };
 
+  getCol = (x: number) => {
+    const colData: Cell[] = [];
+    colData.length = 0;
+    for (let i = 0; i < GRID_ROW; i++) {
+      colData.push(this.getCell(x, i));
+    }
+    return colData;
+  };
+
   setRandomGem = (x: number, y: number) => {
-    const cell = this.getCell(x, y);
-    const newCell = this.getRandomGem();
-    cell.color = newCell.color;
+    this.setState(x, y, this.getRandomGem());
   };
 
   shuffleBoard = () => {
@@ -75,6 +85,126 @@ class GameState {
       color: this.randomInt(0, TOTAL_GEM_COLOR),
     };
   }
+
+  setState = (x: number, y: number, data: Cell) => {
+    const cell = this.getCell(x, y);
+    this.setCellState(cell, data);
+  };
+
+  setCellState = (target: Cell, data: Cell) => {
+    target.color = data.color;
+  };
+
+  async processPath(path: Vector2[]) {
+    if (this.isProcessing || !this.isValidPath(this, path)) {
+      return false;
+    }
+
+    this.isProcessing = true;
+    for (const node of path) {
+      const cell = this.getCell(node.x, node.y);
+      cell.color = -1;
+    }
+
+    await this.fill();
+    this.isProcessing = false;
+  }
+
+  fill = async () => {
+    const dropAmounts: number[] = [];
+    let fillHappened = false;
+
+    // cells filling
+    for (let x = 0; x < GRID_COL; x++) {
+      dropAmounts.length = 0;
+      for (let i = 0; i < GRID_ROW; i++) {
+        dropAmounts[i] = 0;
+      }
+      const colData = this.getCol(x);
+      let toFill = 0;
+      for (let i = colData.length - 1; i >= 0; i--) {
+        if (colData[i].color < 0) {
+          toFill++;
+          for (let y = i - 1; y >= 0; y--) {
+            dropAmounts[y]++;
+          }
+        }
+      }
+      for (let y = colData.length - 1; y >= 0; y--) {
+        if (colData[y].color < 0) {
+          continue;
+        }
+        const dropAmount = dropAmounts[y];
+        if (dropAmount > 0) {
+          const newY = y + dropAmount;
+          const oldCell = this.getCell(x, y);
+
+          this.setState(x, newY, oldCell);
+          this.setState(x, y, {
+            color: -1,
+          });
+        }
+      }
+      if (toFill > 0) fillHappened = true;
+      for (let y = 0; y < toFill; y++) {
+        this.setRandomGem(x, y);
+      }
+    }
+  };
+
+  isValidPath = (gameState: GameState, path: Vector2[]) => {
+    if (path.length < 3) return false;
+
+    let lastNode!: Vector2;
+    for (let i = 0; i < path.length; i++) {
+      const node = path[i];
+
+      // check valid cell
+      if (node.x < 0 || node.x >= GRID_COL || node.y < 0 || node.y >= GRID_ROW)
+        return false;
+
+      // Check same color
+      if (lastNode) {
+        if (
+          gameState.getCell(lastNode.x, lastNode.y).color !==
+          gameState.getCell(node.x, node.y).color
+        ) {
+          return false;
+        }
+
+        if (!this.areAdjacentCells(node, lastNode)) {
+          return false;
+        }
+      } else {
+        lastNode = new Vector2(0, 0);
+      }
+      lastNode.set(node.x, node.y);
+    }
+
+    return true;
+  };
+
+  areAdjacentCells = (cell1: Vector2, cell2: Vector2) => {
+    for (let i = -1; i < 2; i++) {
+      for (let j = -1; j < 2; j++) {
+        const x = cell1.x + j;
+        const y = cell1.y + i;
+        if (
+          x < 0 ||
+          x > GRID_COL - 1 ||
+          y < 0 ||
+          y > GRID_ROW - 1 ||
+          x !== cell2.x ||
+          y !== cell2.y
+        ) {
+          continue;
+        }
+        return true;
+      }
+    }
+
+    return false;
+  };
 
   reset() {
     this.inventories = [];
