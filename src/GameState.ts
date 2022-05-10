@@ -3,17 +3,27 @@ import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
 const tools = ["chop", "stove"];
 const inventorieTypes = ["stove", "beef"];
 
+export const GRID_ROW = 5;
+export const GRID_COL = 5;
+export const TOTAL_GEM_COLOR = 4;
+
 interface Tool {
   itemCode: string;
   code: string;
   remainingActiveTime: number;
 }
 
+export interface Cell {
+  color: number;
+}
+
 class GameState {
   tools: Tool[] = [];
 
-  inventories: { code: string; amount: number }[] = [];
+  cells: Cell[] = [];
+  random: any;
 
+  inventories: { code: string; amount: number }[] = [];
   plates: string[][] = [];
 
   constructor() {
@@ -27,6 +37,43 @@ class GameState {
       { code: "beef", amount: 1 },
       { code: "potato", amount: 2 },
     ];
+
+    this.initBoard();
+  }
+
+  initBoard() {
+    for (let x = 0; x < GRID_COL; x++) {
+      for (let y = 0; y < GRID_ROW; y++) {
+        this.cells[y * GRID_COL + x] = this.getRandomGem();
+      }
+    }
+  }
+
+  getCell = (x: number, y: number): Cell => {
+    return this.cells[y * GRID_COL + x];
+  };
+
+  setRandomGem = (x: number, y: number) => {
+    const cell = this.getCell(x, y);
+    const newCell = this.getRandomGem();
+    cell.color = newCell.color;
+  };
+
+  shuffleBoard = () => {
+    for (let i = this.cells.length - 1; i > 0; i--) {
+      const j = this.randomInt(0, i);
+      [this.cells[i], this.cells[j]] = [this.cells[j], this.cells[i]];
+    }
+  };
+
+  randomInt(min: number, max: number): number {
+    return min + Math.floor(Math.random() * (max - min));
+  }
+
+  getRandomGem() {
+    return {
+      color: this.randomInt(0, TOTAL_GEM_COLOR),
+    };
   }
 
   reset() {
@@ -37,6 +84,8 @@ class GameState {
       remainingActiveTime: 0,
     }));
     this.plates = [];
+
+    this.shuffleBoard();
   }
 
   ungrant(itemCode: string) {

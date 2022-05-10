@@ -1,292 +1,181 @@
-import {
-  AlignMode,
-  createBatch,
-  createGameLoop,
-  createStage,
-  createViewport,
-  createWhiteTexture,
-  createViewportAwareInputHandler,
-  loadFont,
-  Vector2,
-} from "gdxjs";
-import GameState from "./GameState";
-
-const WORLD_WIDTH = 600;
-const WORLD_HEIGHT = 1000;
-
-const plateSize = new Vector2(120, 120);
-const toolSize = new Vector2(200, 200);
-const inventorySlotSize = new Vector2(80, 80);
-
-const inventorieTypes = ["beef", "potato", "lettuce"];
+import { createAnimation, createBatch, createGameLoop, createStage, createViewport, createWhiteTexture, TextureAtlas, TextureRegion, Animation, Vector2, PlayMode, createViewportAwareInputHandler } from "gdxjs";
+import Dimension from "./constant/constant";
+import AssetManager from "./util/AssetManager";
+import GameState, { Cell } from "./GameState";
+import { GRID_COL, GRID_ROW } from "./GameState";
 
 const init = async () => {
   const stage = createStage();
   const canvas = stage.getCanvas();
-  const viewport = createViewport(canvas, WORLD_WIDTH, WORLD_HEIGHT);
+  const viewport = createViewport(canvas, Dimension.WORLD_WIDTH, Dimension.WORLD_HEIGHT);
 
   const gl = viewport.getContext();
   const camera = viewport.getCamera();
   const whiteTexture = createWhiteTexture(gl);
-
   const batch = createBatch(gl);
   const gameState = new GameState();
 
-  const font = await loadFont(gl, "assets/book-bold.fnt");
-  const textRenderer = font.createRenderer(WORLD_WIDTH);
-  textRenderer.setAlignMode(AlignMode.center);
+  const assetManager = new AssetManager(gl);
+  assetManager.loadAtlas('./assets/new_misc.atlas', 'gems_atlas');
+  await assetManager.finishLoading();
 
-  let currentItem: string | null = null;
-  const draggingPosition = new Vector2(0, 0);
+  const inputHandler = createViewportAwareInputHandler(canvas, viewport);
 
-  let inventoriesPushedPosition: { x: number; y: number; index: number, x1: number, y1: number }[] = [];
-  for (let i = 0; i < inventorieTypes.length; i++) {
-    inventoriesPushedPosition.push({ x: 10 + i * 100, y: 10, index: i, x1: 10 + i * 110 - WORLD_WIDTH / 2 + 28, y1: 10 });
+  // Init gem
+  let gemRegions!: TextureRegion[];
+  const gemAnimations: { [key: string]: Animation } = {};
+
+  const gemsAtlas = assetManager.getAtlas('gems_atlas') as TextureAtlas;
+  for (let i = 0; i <= 3; i++) {
+    gemRegions = gemsAtlas.findRegions(`gem_${i}`);
+    const animation = createAnimation(1 / gemRegions.length, gemRegions);
+    gemAnimations[`gem_${i}`] = animation;
   }
 
-  let inventoriesPosition: { x: number; y: number; index: number }[] = [];
-  for (let i = 0; i < 6; i++) {
-    inventoriesPosition.push({ x: 10 + i * 100, y: 100, index: i });
-  }
+  const cellWidth = Dimension.BOARD_WIDTH / GRID_COL;
+  const cellHeight = cellWidth / Dimension.CELL_RATIO;
+  const hitBoxSize = cellHeight * 1.5;
+  const boardOffset = new Vector2(25, Dimension.WORLD_HEIGHT / 2 - cellHeight * GRID_ROW / 2); // center
 
-  let toolsPosition: { x: number; y: number; index: number }[] = [];
-  for (let i = 0; i < 2; i++) {
-    toolsPosition.push({
-      x: 75 + i * (toolSize.x + 50),
-      y: WORLD_HEIGHT / 2,
-      index: i,
-    });
-  }
+  const getCellPosition = (x: number, y: number): Vector2 => {
+    return new Vector2(boardOffset.x + x * cellWidth, boardOffset.y + y * cellHeight);
+  };
 
-  let platesPosition: { x: number; y: number; index: number }[] = [];
-  for (let i = 0; i < 3; i++) {
-    platesPosition.push({
-      x: 80 + i * 160,
-      y: WORLD_HEIGHT - plateSize.y - 50,
-      index: i,
-    });
+  const getCellXyByCoord = (x: number, y: number): Vector2 | null => {
+    if (x < 0 || y < 0) {
+      return null;
+    }
+  
+    if (x > Dimension.BOARD_WIDTH || y > Dimension.BOARD_HEIGHT) {
+      return null;
+    }
+  
+    const cellXy: Vector2 = new Vector2(0, 0);
+    cellXy.x = Math.floor(x / cellWidth);
+    cellXy.y = Math.floor(y / cellHeight);
+  
+    const center = getCellPosition(cellXy.x, cellXy.y).sub(boardOffset.x, boardOffset.y).add(cellWidth / 2, cellHeight / 2);
+    const dist = Math.max(Math.abs(x - center.x), Math.abs(y - center.y));
+    if (dist > hitBoxSize * 0.7) {
+      return null;
+    }
+  
+    return cellXy;
   }
+  
+  let selectedPath: Vector2[] = [];
+  const getPointIndex = (x: number, y: number) => {
+    for (let i = 0; i < selectedPath.length; i++) {
+      const point = selectedPath[i];
+      if (point.x === x && point.y === y) return i;
+    }
+    return -1;
+  };
 
-  const pointInRect = (
-    position: { x: number; y: number },
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ) => {
-    return (
-      position.x > x &&
-      position.x < x + width &&
-      position.y > y &&
-      position.y < y + height
+  let dragging = false;
+  let currentColor = -1;
+  let highlightCells: Vector2[] = [];
+
+  const drawDragging = (delta: any) => {
+    if (inputHandler.isTouched()) {
+      dragging = true;
+      const touchPoint = inputHandler.getTouchedWorldCoord();
+      const xy = getCellXyByCoord(touchPoint.x - boardOffset.x, touchPoint.y - boardOffset.y);
+      if (xy !== null) {
+        const cell = gameState.getCell(xy.x, xy.y);
+        if (cell === undefined) return;
+        if (currentColor !== -1 && cell.color !== currentColor) return;
+
+        const index = getPointIndex(xy.x, xy.y);
+        let dirty = false;
+        
+        if (index === -1) {
+          const lastPoint = selectedPath[selectedPath.length - 1];
+          let shouldAdd = false;
+          if (!lastPoint) {
+            shouldAdd = true;
+          } else {
+            shouldAdd = Math.max(Math.abs(xy.x - lastPoint.x), Math.abs(xy.y - lastPoint.y)) <= 1;
+          }
+          if (shouldAdd) {
+            selectedPath.push(xy);
+            dirty = true;
+          }
+          if (selectedPath.length === 1) {
+            currentColor = cell.color;
+          }
+        } else if (index === selectedPath.length - 2) {
+          selectedPath.pop();
+          dirty = true;
+        }
+        if (dirty) {
+          highlightCells.length = 0;
+          for (let i = 0; i < selectedPath.length; i++) {
+            highlightCells.push(selectedPath[i]);
+          }
+        }
+      }
+    } else if (dragging) {
+      selectedPath.length = 0;
+      dragging = false;
+      currentColor = -1;
+      highlightCells.length = 0;
+    }
+  };
+
+  const isHighlighted = (x: number, y: number): boolean => {
+    if(highlightCells.length > 0)
+    {
+      return highlightCells.find(xy => xy.x === x && xy.y === y) !== undefined;
+    }
+    return false;
+  };
+
+  const drawGem = (x: number, y: number, cell: Cell, scale = 0.9) => {
+    const position = new Vector2( boardOffset.x + x * cellWidth, boardOffset.y + y * cellHeight);
+    const region = gemAnimations[`gem_${cell.color}`].getKeyFrame(0, PlayMode.LOOP);
+    const width = cellWidth * 1.65;
+    const height = ((region as any).originalHeight * width) / (region as any).originalWidth;
+    
+    let highlighted = false;
+    if(highlightCells.length > 0)
+    {
+      highlighted = isHighlighted(x, y);
+    }
+
+    region.draw(
+      batch,
+      position.x + cellWidth / 2 - width / 2,
+      position.y + cellHeight / 2 - height / 2,
+      width,
+      height,
+      width / 2,
+      height / 2,
+      0,
+      scale * (highlighted ? 1.1 : 1),
+      scale * (highlighted ? 1.1 : 1)
     );
   };
 
-  const getItemAt = (x: number, y: number): string | null => {
-    for (const position of inventoriesPosition) {
-      if (pointInRect({ x, y }, position.x, position.y, 80, 80)) {
-        return gameState.inventories[position.index]?.code || null;
-      }
-    }
-    return null;
-  };
-
-  const getToolAt = (x: number, y: number): string | null => {
-    let index = -1;
-    for (const position of toolsPosition) {
-      if (pointInRect({ x, y }, position.x, position.y, 200, 200)) {
-        index = position.index;
-      }
-    }
-    return gameState.tools[index]?.code || null;
-  };
-
-  const getPlateAt = (x: number, y: number): number | null => {
-
-    for (const position of platesPosition) {
-      if (pointInRect({ x, y }, position.x, position.y, 120, 120)) {
-        return position.index;
-      }
-    }
-    return null;
-  };
-
-  const getButtonAt = (x: number, y: number): number | null => {
-
-    for (const position of inventoriesPushedPosition) {
-      if (pointInRect({ x, y }, position.x, position.y, 80, 80)) {
-        return position.index;
-      }
-    }
-    return null;
-  };
-
-  const inputHandler = createViewportAwareInputHandler(canvas, viewport);
-  inputHandler.addEventListener("touchStart", () => {
-    console.log(1)
-    const touched = inputHandler.getTouchedWorldCoord();
-    draggingPosition.setVector(inputHandler.getTouchedWorldCoord());
-    currentItem = getItemAt(touched.x, touched.y);
-  });
-
-  inputHandler.addEventListener("touchMove", () => {
-    console.log(2)
-    if (currentItem !== null) {
-      draggingPosition.setVector(inputHandler.getTouchedWorldCoord());
-    }
-  });
-
-  inputHandler.addEventListener("touchEnd", () => {
-
-    if (currentItem !== null) {
-      const { x, y } = inputHandler.getTouchedWorldCoord();
-      let toolId = getToolAt(x, y);
-      if (toolId) {
-        gameState.use(toolId, currentItem);
-      } else {
-        let plateId = getPlateAt(x, y);
-        if (plateId != null) {
-          gameState.putOnPlate(currentItem, plateId);
-        } else currentItem = null;
-      }
-      currentItem = null;
-    } else {
-      const { x, y } = inputHandler.getTouchedWorldCoord();
-      let plateId = getPlateAt(x, y);
-      if (plateId != null) {
-        gameState.clearPlate(plateId)
-      } else {
-        let buttonIndex = getButtonAt(x, y);
-        if (buttonIndex != null) {
-          gameState.grant(inventorieTypes[buttonIndex])
-        }
-      }
-    }
-  });
-
   createGameLoop((delta: any) => {
-    gameState.process(delta);
     batch.setProjection(camera.combined);
     batch.begin();
 
     // black panel
     batch.setColor(0.26, 0.53, 0.96, 1);
-    batch.draw(whiteTexture, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    batch.draw(whiteTexture, 0, 0, Dimension.WORLD_WIDTH, Dimension.WORLD_HEIGHT);
     batch.setColor(0, 0, 0, 1);
 
-    // draw slots
-    batch.setColor(0.3, 0.3, 0.3, 1);
-    for (let i = 0; i < 6; i++) {
-      batch.draw(
-        whiteTexture,
-        10 + i * 100,
-        100,
-        inventorySlotSize.x,
-        inventorySlotSize.y
-      );
-    }
+    for (let x = 0; x < GRID_COL; x++) {
+      for (let y = 0; y < GRID_ROW; y++) {
+        batch.setColor(1, 1, 1, 1);
 
-    for (let i = 0; i < inventoriesPushedPosition.length; i++) {
-      batch.draw(
-        whiteTexture,
-        inventoriesPushedPosition[i].x,
-        inventoriesPushedPosition[i].y,
-        inventorySlotSize.x,
-        inventorySlotSize.y
-      );
-      textRenderer.draw(
-        batch,
-        inventorieTypes[i],
-        inventoriesPushedPosition[i].x1,
-        inventoriesPushedPosition[i].y1,
-        20
-      )
-    }
-
-    //draw inventories
-    batch.setColor(0, 0, 0, 1);
-    for (let i = 0; i < gameState.inventories.length; i++) {
-      textRenderer.draw(
-        batch,
-        gameState.inventories[i].code,
-        i * 110 - WORLD_WIDTH / 2 + 40,
-        100,
-        20
-      );
-      textRenderer.draw(
-        batch,
-        `x${gameState.inventories[i].amount}`,
-        i * 110 - WORLD_WIDTH / 2 + 40,
-        130,
-        20
-      );
-    }
-
-    //draw plates
-    batch.setColor(0.3, 0.3, 0.3, 1);
-    for (let i = 0; i < 3; i++) {
-      batch.draw(
-        whiteTexture,
-        80 + i * 160,
-        WORLD_HEIGHT - plateSize.y - 50,
-        plateSize.x,
-        plateSize.y
-      );
-    }
-
-    //draw inventory in plate
-    for (let i = 0; i < gameState.plates.length; i++) {
-      for (let y = 0; y < gameState.plates[i].length; y++) {
-        textRenderer.draw(
-          batch,
-          gameState.plates[i][y],
-          i * 160 - WORLD_WIDTH / 2 + 140,
-          WORLD_HEIGHT - plateSize.y - 50 + y * 30,
-          20
-        );
+        const cell = gameState.getCell(x, y);
+        drawGem(x, y, cell);
       }
     }
 
-    batch.setColor(0.2, 0.2, 0.2, 1);
-    // draw tools
-    for (let i = 0; i < gameState.tools.length; i++) {
-      batch.draw(
-        whiteTexture,
-        75 + i * (toolSize.x + 50),
-        WORLD_HEIGHT / 2,
-        toolSize.x,
-        toolSize.y
-      );
-
-      textRenderer.draw(
-        batch,
-        gameState.tools[i].code,
-        i * (toolSize.x + 50) - 120,
-        WORLD_HEIGHT / 2 - 80
-      );
-
-      textRenderer.draw(
-        batch,
-        gameState.tools[i].itemCode.toString(),
-        i * (toolSize.x + 50) - 120,
-        WORLD_HEIGHT / 2 + 80
-      );
-
-      textRenderer.draw(
-        batch,
-        gameState.tools[i].remainingActiveTime.toString(),
-        i * (toolSize.x + 50) - 120,
-        WORLD_HEIGHT / 2 + 200
-      );
-    }
-
-    currentItem &&
-      textRenderer.draw(
-        batch,
-        currentItem,
-        draggingPosition.x - WORLD_WIDTH / 2,
-        draggingPosition.y
-      );
+    drawDragging(delta);
 
     batch.end();
   });
