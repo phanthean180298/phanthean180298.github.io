@@ -21,7 +21,7 @@ export interface Cell {
 
 class GameState {
   tools: Tool[] = [];
-
+  screen: string = "Title";
   cells: Cell[] = [];
   random: any;
   isProcessing = false;
