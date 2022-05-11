@@ -1,19 +1,12 @@
 import {
   AlignMode,
-  createBatch,
   createGameLoop,
   createStage,
-  createViewport,
   createWhiteTexture,
   createViewportAwareInputHandler,
   loadFont,
   Vector2,
-  TextureRegion,
-  TextureAtlas,
-  createAnimation,
   drawLine,
-  PlayMode,
-  Animation,
   Game,
   Screen,
   SpriteBatch,
@@ -21,8 +14,13 @@ import {
 } from "gdxjs";
 import Dimension from "../constant/constant";
 import GameState, { Cell, GRID_COL, GRID_ROW } from "../GameState";
-import AssetManager from "../util/AssetManager";
-import createTitleScreen from "./createTitleScreen";
+import {
+  loadInventory,
+  loadMap,
+  loadOrder,
+  loadPlate,
+  loadTool,
+} from "../util/tiledmapUtils";
 
 const WORLD_WIDTH = 600;
 const WORLD_HEIGHT = 1000;
@@ -30,8 +28,12 @@ const WORLD_HEIGHT = 1000;
 const plateSize = new Vector2(80, 80);
 const toolSize = new Vector2(120, 120);
 const inventorySlotSize = new Vector2(60, 60);
-
-const inventorieTypes = ["beef", "potato", "lettuce"];
+const gemColor = [
+  { r: 1, g: 0, b: 0, a: 1 },
+  { r: 0, g: 1, b: 0, a: 1 },
+  { r: 0, g: 0, b: 1, a: 1 },
+  { r: 0.98, g: 0.73, b: 0, a: 1 },
+];
 
 const createGameScreen = async (
   batch: SpriteBatch,
@@ -44,37 +46,43 @@ const createGameScreen = async (
   const gl = viewport.getContext();
   const camera = viewport.getCamera();
   const whiteTexture = createWhiteTexture(gl);
-
   const gameState = new GameState();
-  const assetManager = new AssetManager(gl);
-  assetManager.loadAtlas("./assets/new_misc.atlas", "gems_atlas");
-  await assetManager.finishLoading();
 
   const font = await loadFont(gl, "assets/book-bold.fnt");
   const textRenderer = font.createRenderer(WORLD_WIDTH);
   textRenderer.setAlignMode(AlignMode.center);
+
   const inputHandler = createViewportAwareInputHandler(canvas, viewport);
 
+  const mapData = await loadMap("./assets/maps/1.json");
   return {
-    update(delta) {},
     dispose() {
       inputHandler.cleanup();
     },
     init() {
-      // Init gem
-      let gemRegions!: TextureRegion[];
-      const gemAnimations: { [key: string]: Animation } = {};
-
-      const gemsAtlas = assetManager.getAtlas("gems_atlas") as TextureAtlas;
-      for (let i = 0; i <= 3; i++) {
-        gemRegions = gemsAtlas.findRegions(`gem_${i}`);
-        const animation = createAnimation(1 / gemRegions.length, gemRegions);
-        gemAnimations[`gem_${i}`] = animation;
+      //Init first half
+      for (const layer of mapData.layers) {
+        switch (layer.name) {
+          case "inventory":
+            const inventorySlot = loadInventory(layer);
+            break;
+          case "order":
+            const orderList = loadOrder(layer);
+            break;
+          case "tool":
+            const toolList = loadTool(layer);
+            break;
+          case "plate":
+            const plateSlot = loadPlate(layer);
+            break;
+          default:
+            break;
+        }
       }
 
+      // Init second half
       const cellWidth = Dimension.BOARD_WIDTH / GRID_COL;
       const cellHeight = cellWidth / Dimension.CELL_RATIO;
-      const hitBoxSize = cellHeight * 1.3;
       const boardOffset = new Vector2(
         25,
         (Dimension.WORLD_HEIGHT * 3) / 4 - (cellHeight * GRID_ROW) / 2
@@ -104,7 +112,7 @@ const createGameScreen = async (
           .sub(boardOffset.x, boardOffset.y)
           .add(cellWidth / 2, cellHeight / 2);
         const dist = Math.max(Math.abs(x - center.x), Math.abs(y - center.y));
-        if (dist > hitBoxSize * 0.5) {
+        if (dist > cellHeight * 0.5) {
           return null;
         }
 
@@ -193,27 +201,28 @@ const createGameScreen = async (
         return false;
       };
 
-      const drawGem = (x: number, y: number, cell: Cell, scale = 0.9) => {
+      const drawGem = (x: number, y: number, cell: Cell, scale = 1) => {
         const position = new Vector2(
           boardOffset.x + x * cellWidth,
           boardOffset.y + y * cellHeight
         );
-        const region = gemAnimations[`gem_${cell.color}`].getKeyFrame(
-          0,
-          PlayMode.LOOP
-        );
-        const width = cellWidth * 1.7;
-        const height =
-          ((region as any).originalHeight * width) /
-          (region as any).originalWidth;
+
+        const width = cellWidth * 0.5;
+        const height = width;
 
         let highlighted = false;
         if (highlightCells.length > 0) {
           highlighted = isHighlighted(x, y);
         }
 
-        region.draw(
-          batch,
+        batch.setColor(
+          gemColor[cell.color].r,
+          gemColor[cell.color].g,
+          gemColor[cell.color].b,
+          gemColor[cell.color].a
+        );
+        batch.draw(
+          whiteTexture,
           position.x + cellWidth / 2 - width / 2,
           position.y + cellHeight / 2 - height / 2,
           width,
@@ -224,6 +233,7 @@ const createGameScreen = async (
           scale * (highlighted ? 1.1 : 1),
           scale * (highlighted ? 1.1 : 1)
         );
+        batch.setColor(1, 1, 1, 1);
       };
 
       const getCellCenter = (x: number, y: number): Vector2 => {
@@ -377,7 +387,7 @@ const createGameScreen = async (
         // black panel
         batch.setColor(0.26, 0.53, 0.96, 1);
         batch.draw(whiteTexture, 0, 0, WORLD_WIDTH, WORLD_HEIGHT / 2);
-        batch.setColor(0.77, 0.2, 0.95, 1);
+        batch.setColor(0.3, 0.3, 0.3, 1);
         batch.draw(
           whiteTexture,
           0,

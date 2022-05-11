@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 const TOOL_FORMULA_DATA = `beef * 1 + chop * 1.5 = groundedBeef
 beef + stove * 2 = searedBeef
 groundedBeef + stove * 2 = meatball
