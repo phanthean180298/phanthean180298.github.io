@@ -1,47 +1,43 @@
 import {
-  AlignMode,
+  createAnimation,
   createBatch,
   createGameLoop,
   createStage,
   createViewport,
   createWhiteTexture,
-  createViewportAwareInputHandler,
-  loadFont,
-  Vector2,
-  TextureRegion,
   TextureAtlas,
-  createAnimation,
-  drawLine,
-  PlayMode,
+  TextureRegion,
   Animation,
+  Vector2,
+  PlayMode,
+  createViewportAwareInputHandler,
+  drawLine,
 } from "gdxjs";
 import Dimension from "./constant/constant";
-import GameState, { Cell, GRID_COL, GRID_ROW } from "./GameState";
 import AssetManager from "./util/AssetManager";
-
-const WORLD_WIDTH = 600;
-const WORLD_HEIGHT = 1000;
-
-const plateSize = new Vector2(80, 80);
-const toolSize = new Vector2(120, 120);
-const inventorySlotSize = new Vector2(60, 60);
-
-const inventorieTypes = ["beef", "potato", "lettuce"];
+import GameState, { Cell } from "./GameState";
+import { GRID_COL, GRID_ROW } from "./GameState";
 
 const init = async () => {
   const stage = createStage();
   const canvas = stage.getCanvas();
-  const viewport = createViewport(canvas, WORLD_WIDTH, WORLD_HEIGHT);
+  const viewport = createViewport(
+    canvas,
+    Dimension.WORLD_WIDTH,
+    Dimension.WORLD_HEIGHT
+  );
 
   const gl = viewport.getContext();
   const camera = viewport.getCamera();
   const whiteTexture = createWhiteTexture(gl);
-
   const batch = createBatch(gl);
   const gameState = new GameState();
+
   const assetManager = new AssetManager(gl);
   assetManager.loadAtlas("./assets/new_misc.atlas", "gems_atlas");
   await assetManager.finishLoading();
+
+  const inputHandler = createViewportAwareInputHandler(canvas, viewport);
 
   // Init gem
   let gemRegions!: TextureRegion[];
@@ -59,7 +55,7 @@ const init = async () => {
   const hitBoxSize = cellHeight * 1.3;
   const boardOffset = new Vector2(
     25,
-    Dimension.WORLD_HEIGHT * 3 / 4 - (cellHeight * GRID_ROW) / 2
+    Dimension.WORLD_HEIGHT / 2 - (cellHeight * GRID_ROW) / 2
   ); // center
 
   const getCellPosition = (x: number, y: number): Vector2 => {
@@ -107,7 +103,7 @@ const init = async () => {
   let highlightCells: Vector2[] = [];
 
   const processPath = (path: Vector2[]) => {
-    gameState.processPath(path).then(async () => { });
+    gameState.processPath(path).then(async () => {});
   };
 
   const updateDragging = (delta: any) => {
@@ -239,225 +235,20 @@ const init = async () => {
     }
   };
 
-  const font = await loadFont(gl, "assets/book-bold.fnt");
-  const textRenderer = font.createRenderer(WORLD_WIDTH);
-  textRenderer.setAlignMode(AlignMode.center);
-
-  let currentItem: string | null = null;
-  const draggingPosition = new Vector2(0, 0);
-
-
-
-  let inventoriesPosition: { x: number; y: number; index: number }[] = [];
-  for (let i = 0; i < 6; i++) {
-    inventoriesPosition.push({ x: 10 + i * 100, y: 50, index: i });
-  }
-
-  let toolsPosition: { x: number; y: number; index: number }[] = [];
-  for (let i = 0; i < 2; i++) {
-    toolsPosition.push({
-      x: 160 + i * (toolSize.x + 50),
-      y: WORLD_HEIGHT / 4 - 50,
-      index: i,
-    });
-  }
-
-  let platesPosition: { x: number; y: number; index: number }[] = [];
-  for (let i = 0; i < 3; i++) {
-    platesPosition.push({
-      x: 80 + i * 160,
-      y: (WORLD_HEIGHT - plateSize.y) / 2 - 100,
-      index: i,
-    });
-  }
-
-  const pointInRect = (
-    position: { x: number; y: number },
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ) => {
-    return (
-      position.x > x &&
-      position.x < x + width &&
-      position.y > y &&
-      position.y < y + height
-    );
-  };
-
-  const getItemAt = (x: number, y: number): string | null => {
-    for (const position of inventoriesPosition) {
-      if (pointInRect({ x, y }, position.x, position.y, 80, 80)) {
-        return gameState.inventories[position.index]?.code || null;
-      }
-    }
-    return null;
-  };
-
-  const getToolAt = (x: number, y: number): string | null => {
-    let index = -1;
-    for (const position of toolsPosition) {
-      if (pointInRect({ x, y }, position.x, position.y, toolSize.x, toolSize.y)) {
-        index = position.index;
-      }
-    }
-    return gameState.tools[index]?.code || null;
-  };
-
-  const getPlateAt = (x: number, y: number): number | null => {
-    for (const position of platesPosition) {
-      if (pointInRect({ x, y }, position.x, position.y, 120, 120)) {
-        return position.index;
-      }
-    }
-    return null;
-  };
-
-  const inputHandler = createViewportAwareInputHandler(canvas, viewport);
-  inputHandler.addEventListener("touchStart", () => {
-    const touched = inputHandler.getTouchedWorldCoord();
-    draggingPosition.setVector(inputHandler.getTouchedWorldCoord());
-    currentItem = getItemAt(touched.x, touched.y);
-  });
-
-  inputHandler.addEventListener("touchMove", () => {
-    if (currentItem !== null) {
-      draggingPosition.setVector(inputHandler.getTouchedWorldCoord());
-    }
-  });
-
-  inputHandler.addEventListener("touchEnd", () => {
-    if (currentItem !== null) {
-      const { x, y } = inputHandler.getTouchedWorldCoord();
-      let toolId = getToolAt(x, y);
-      if (toolId) {
-        gameState.use(toolId, currentItem);
-      } else {
-        let plateId = getPlateAt(x, y);
-        if (plateId != null) {
-          gameState.putOnPlate(currentItem, plateId);
-        } else currentItem = null;
-      }
-      currentItem = null;
-    } else {
-      const { x, y } = inputHandler.getTouchedWorldCoord();
-      let plateId = getPlateAt(x, y);
-      if (plateId != null) {
-        gameState.clearPlate(plateId);
-      }
-    }
-  });
-
   createGameLoop((delta: any) => {
-    gameState.process(delta);
     batch.setProjection(camera.combined);
     batch.begin();
 
     // black panel
     batch.setColor(0.26, 0.53, 0.96, 1);
-    batch.draw(whiteTexture, 0, 0, WORLD_WIDTH, WORLD_HEIGHT / 2);
-    batch.setColor(0.77, 0.2, 0.95, 1);
-    batch.draw(whiteTexture, 0, WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT / 2);
-    batch.setColor(1, 1, 1, 1);
-
-    // draw slots
-    batch.setColor(0.3, 0.3, 0.3, 1);
-    for (let i = 0; i < inventoriesPosition.length; i++) {
-      batch.draw(
-        whiteTexture,
-        inventoriesPosition[i].x,
-        inventoriesPosition[i].y,
-        inventorySlotSize.x,
-        inventorySlotSize.y
-      );
-    }
-
-
-    // draw inventories
+    batch.draw(
+      whiteTexture,
+      0,
+      0,
+      Dimension.WORLD_WIDTH,
+      Dimension.WORLD_HEIGHT
+    );
     batch.setColor(0, 0, 0, 1);
-    for (let i = 0; i < gameState.inventories.length; i++) {
-      textRenderer.draw(
-        batch,
-        gameState.inventories[i].code,
-        i * 100 - WORLD_WIDTH / 2 + 40,
-        50,
-        15
-      );
-      textRenderer.draw(
-        batch,
-        `x${gameState.inventories[i].amount}`,
-        i * 100 - WORLD_WIDTH / 2 + 40,
-        80,
-        20
-      );
-    }
-
-    //draw plates
-    batch.setColor(0.3, 0.3, 0.3, 1);
-    for (let i = 0; i < 3; i++) {
-      batch.draw(
-        whiteTexture,
-        80 + i * 160,
-        (WORLD_HEIGHT - plateSize.y) / 2 - 100,
-        plateSize.x,
-        plateSize.y
-      );
-    }
-
-    //draw inventory in plate
-    for (let i = 0; i < gameState.plates.length; i++) {
-      for (let y = 0; y < gameState.plates[i].length; y++) {
-        textRenderer.draw(
-          batch,
-          gameState.plates[i][y],
-          i * 160 - WORLD_WIDTH / 2 + 120,
-          (WORLD_HEIGHT - plateSize.y) / 2 - 100 + y * 30,
-          20
-        );
-      }
-    }
-
-    batch.setColor(0.2, 0.2, 0.2, 1);
-    // draw tools
-    for (let i = 0; i < gameState.tools.length; i++) {
-      batch.draw(
-        whiteTexture,
-        toolsPosition[i].x,
-        toolsPosition[i].y,
-        toolSize.x,
-        toolSize.y
-      );
-
-      textRenderer.draw(
-        batch,
-        gameState.tools[i].code,
-        i * (toolSize.x + 50) - 80,
-        WORLD_HEIGHT / 4 - 100
-      );
-
-      textRenderer.draw(
-        batch,
-        gameState.tools[i].itemCode.toString(),
-        i * (toolSize.x + 50) - 80,
-        WORLD_HEIGHT / 4 - 20
-      );
-
-      textRenderer.draw(
-        batch,
-        gameState.tools[i].remainingActiveTime.toString(),
-        i * (toolSize.x + 50) - 80,
-        WORLD_HEIGHT / 4 + 60
-      );
-    }
-
-    currentItem &&
-      textRenderer.draw(
-        batch,
-        currentItem,
-        draggingPosition.x - WORLD_WIDTH / 2,
-        draggingPosition.y
-      );
 
     updateDragging(delta);
     drawPath(selectedPath);

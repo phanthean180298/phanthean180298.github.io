@@ -2,7 +2,7 @@ import { Vector2 } from "gdxjs";
 import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
 
 const tools = ["chop", "stove"];
-const inventorieTypes = ["stove", "beef"];
+const inventorieTypes = ["potato", "beef", "lettuce"];
 
 export const GRID_ROW = 5;
 export const GRID_COL = 5;
@@ -101,6 +101,9 @@ class GameState {
     }
 
     this.isProcessing = true;
+    const _cell = this.getCell(path[0].x, path[0].y);
+    _cell.color < 3 && this.grant(inventorieTypes[_cell.color], path.length);
+
     for (const node of path) {
       const cell = this.getCell(node.x, node.y);
       cell.color = -1;
@@ -112,7 +115,7 @@ class GameState {
 
   fill = async () => {
     const dropAmounts: number[] = [];
-    let fillHappened = false;
+    // let fillHappened = false;
 
     // cells filling
     for (let x = 0; x < GRID_COL; x++) {
@@ -145,7 +148,7 @@ class GameState {
           });
         }
       }
-      if (toFill > 0) fillHappened = true;
+      // if (toFill > 0) fillHappened = true;
       for (let y = 0; y < toFill; y++) {
         this.setRandomGem(x, y);
       }
@@ -232,13 +235,15 @@ class GameState {
     return true;
   }
 
-  grant(code: string) {
+  grant(code: string, amount?: number) {
     if (!this.inventories.find((i) => i.code === code)) {
-      this.inventories.push({ code, amount: 1 });
+      amount
+        ? this.inventories.push({ code, amount })
+        : this.inventories.push({ code, amount: 1 });
     } else {
       this.inventories = this.inventories.map((i) => {
         if (i.code === code) {
-          i.amount++;
+          amount ? (i.amount += amount) : i.amount++;
         }
         return i;
       });
