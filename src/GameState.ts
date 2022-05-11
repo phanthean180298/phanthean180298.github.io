@@ -1,5 +1,7 @@
 import { Vector2 } from "gdxjs";
+import eventEmitter from "./util/eventEmitter";
 import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
+import { ToolData } from "./util/tiledmapUtils";
 
 const tools = ["chop", "stove"];
 const inventorieTypes = ["potato", "beef", "lettuce"];
@@ -19,6 +21,19 @@ export interface Cell {
   color: number;
 }
 
+export const initialMapData = {
+  orders: [],
+  inventorySlotAmount: 0,
+  tools: [],
+  plateSlotAmount: 0,
+};
+
+export interface MapData {
+  orders: string[];
+  inventorySlotAmount: number;
+  tools: ToolData[];
+  plateSlotAmount: number;
+}
 class GameState {
   tools: Tool[] = [];
   screen: string = "Title";
@@ -27,7 +42,19 @@ class GameState {
   isProcessing = false;
 
   inventories: { code: string; amount: number }[] = [];
+
   plates: string[][] = [];
+
+  currentOrders: string[] = [];
+
+  totalTime: number = 0;
+
+  mapData: MapData = {
+    orders: [],
+    inventorySlotAmount: 0,
+    tools: [],
+    plateSlotAmount: 0,
+  };
 
   constructor() {
     this.tools = tools.map((tool) => ({
@@ -35,7 +62,7 @@ class GameState {
       code: tool,
       remainingActiveTime: 0,
     }));
-    this.plates = [[], [], []];
+    this.plates = [];
     this.inventories = [
       { code: "beef", amount: 1 },
       { code: "potato", amount: 2 },
@@ -95,6 +122,14 @@ class GameState {
     target.color = data.color;
   };
 
+  setMapData = (mapData: MapData) => {
+    this.mapData = mapData;
+    this.currentOrders = mapData.orders;
+    for (let i = 0; i < this.mapData.plateSlotAmount; i++) {
+      this.plates.push([]);
+    }
+  };
+
   async processPath(path: Vector2[]) {
     if (this.isProcessing || !this.isValidPath(this, path)) {
       return false;
@@ -102,7 +137,10 @@ class GameState {
 
     this.isProcessing = true;
     const _cell = this.getCell(path[0].x, path[0].y);
-    _cell.color < 3 && this.grant(inventorieTypes[_cell.color], path.length);
+    if (_cell.color < 3) {
+      this.grant(inventorieTypes[_cell.color], path.length);
+      this.totalTime += 5;
+    }
 
     for (const node of path) {
       const cell = this.getCell(node.x, node.y);
@@ -237,6 +275,9 @@ class GameState {
 
   grant(code: string, amount?: number) {
     if (!this.inventories.find((i) => i.code === code)) {
+      if (this.inventories.length >= this.mapData.inventorySlotAmount) {
+        return;
+      }
       amount
         ? this.inventories.push({ code, amount })
         : this.inventories.push({ code, amount: 1 });
@@ -253,7 +294,16 @@ class GameState {
   clearPlate(plateIndex: number) {
     if (this.plates[plateIndex].length === 0) return;
     for (const item of this.plates[plateIndex]) {
-      this.grant(item);
+      if (this.currentOrders.includes(item)) {
+        this.currentOrders = this.currentOrders.filter(
+          (order) => order !== item
+        );
+        if (this.currentOrders.length === 0) {
+          eventEmitter.emit("endGame");
+        }
+      } else {
+        this.grant(item);
+      }
     }
     this.plates[plateIndex].length = 0;
   }
@@ -273,6 +323,7 @@ class GameState {
   }
 
   process(delta: number) {
+    this.totalTime += delta;
     this.tools = this.tools.map((tool) => {
       if (tool.remainingActiveTime === 0) return tool;
 

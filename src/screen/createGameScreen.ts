@@ -11,9 +11,17 @@ import {
   Screen,
   SpriteBatch,
   Viewport,
+  createBatch,
 } from "gdxjs";
 import Dimension from "../constant/constant";
-import GameState, { Cell, GRID_COL, GRID_ROW } from "../GameState";
+import GameState, {
+  Cell,
+  GRID_COL,
+  GRID_ROW,
+  initialMapData,
+  MapData,
+} from "../GameState";
+import eventEmitter from "../util/eventEmitter";
 import {
   loadInventory,
   loadMap,
@@ -21,6 +29,7 @@ import {
   loadPlate,
   loadTool,
 } from "../util/tiledmapUtils";
+import createVictoryScreen from "./createVictoryScreen";
 
 const WORLD_WIDTH = 600;
 const WORLD_HEIGHT = 1000;
@@ -36,17 +45,16 @@ const gemColor = [
 ];
 
 const createGameScreen = async (
-  batch: SpriteBatch,
   game: Game<void>,
-  viewport: Viewport
+  viewport: Viewport,
+  mapIndex: number
 ): Promise<Screen<void>> => {
-  const stage = createStage();
-  const canvas = stage.getCanvas();
-
   const gl = viewport.getContext();
   const camera = viewport.getCamera();
   const whiteTexture = createWhiteTexture(gl);
   const gameState = new GameState();
+  const canvas = viewport.getCanvas();
+  const batch = createBatch(gl);
 
   const font = await loadFont(gl, "assets/book-bold.fnt");
   const textRenderer = font.createRenderer(WORLD_WIDTH);
@@ -55,30 +63,38 @@ const createGameScreen = async (
   const inputHandler = createViewportAwareInputHandler(canvas, viewport);
 
   const mapData = await loadMap("./assets/maps/1.json");
+
+  eventEmitter.addListener("endGame", () => {
+    game.setScreen(createVictoryScreen(game, viewport));
+  });
+
   return {
     dispose() {
       inputHandler.cleanup();
+      eventEmitter.removeListener("endGame", () => {});
     },
     init() {
       //Init first half
+      const _mapData: MapData = initialMapData;
       for (const layer of mapData.layers) {
         switch (layer.name) {
           case "inventory":
-            const inventorySlot = loadInventory(layer);
+            _mapData.inventorySlotAmount = loadInventory(layer);
             break;
           case "order":
-            const orderList = loadOrder(layer);
+            _mapData.orders = loadOrder(layer);
             break;
           case "tool":
-            const toolList = loadTool(layer);
+            _mapData.tools = loadTool(layer);
             break;
           case "plate":
-            const plateSlot = loadPlate(layer);
+            _mapData.plateSlotAmount = loadPlate(layer);
             break;
           default:
             break;
         }
       }
+      gameState.setMapData(_mapData);
 
       // Init second half
       const cellWidth = Dimension.BOARD_WIDTH / GRID_COL;
@@ -86,8 +102,9 @@ const createGameScreen = async (
       const boardOffset = new Vector2(
         25,
         (Dimension.WORLD_HEIGHT * 3) / 4 - (cellHeight * GRID_ROW) / 2
-      ); // center
+      );
 
+      // center
       const getCellPosition = (x: number, y: number): Vector2 => {
         return new Vector2(
           boardOffset.x + x * cellWidth,
@@ -272,23 +289,37 @@ const createGameScreen = async (
       const draggingPosition = new Vector2(0, 0);
 
       let inventoriesPosition: { x: number; y: number; index: number }[] = [];
-      for (let i = 0; i < 6; i++) {
-        inventoriesPosition.push({ x: 10 + i * 100, y: 50, index: i });
+      for (let i = 0; i < gameState.mapData?.inventorySlotAmount; i++) {
+        inventoriesPosition.push({ x: 50 + i * 100, y: 120, index: i });
       }
 
-      let toolsPosition: { x: number; y: number; index: number }[] = [];
-      for (let i = 0; i < 2; i++) {
+      let ordersPosition: { x: number; y: number }[] = [];
+      for (let i = 0; i < gameState.currentOrders.length; i++) {
+        ordersPosition.push({ x: 50 + i * 100, y: 40 });
+      }
+
+      let toolsPosition: {
+        x: number;
+        y: number;
+        index: number;
+        size: Vector2;
+      }[] = [];
+      for (let i = 0; i < gameState.mapData.tools.length; i++) {
         toolsPosition.push({
-          x: 160 + i * (toolSize.x + 50),
-          y: WORLD_HEIGHT / 4 - 50,
+          x: gameState.mapData.tools[i].pos.x,
+          y: gameState.mapData.tools[i].pos.y,
           index: i,
+          size: gameState.mapData.tools[i].size,
         });
       }
 
       let platesPosition: { x: number; y: number; index: number }[] = [];
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < gameState.mapData?.plateSlotAmount; i++) {
         platesPosition.push({
-          x: 80 + i * 160,
+          x:
+            Dimension.WORLD_WIDTH * 0.1 +
+            (i * (Dimension.WORLD_WIDTH * 0.8)) /
+              gameState.mapData.plateSlotAmount,
           y: (WORLD_HEIGHT - plateSize.y) / 2 - 100,
           index: i,
         });
@@ -397,6 +428,27 @@ const createGameScreen = async (
         );
         batch.setColor(1, 1, 1, 1);
 
+        // draw orders
+        batch.setColor(0.3, 0.3, 0.3, 1);
+
+        textRenderer.draw(batch, "Orders", 0, 5, 20);
+        for (let i = 0; i < gameState.currentOrders.length; i++) {
+          batch.draw(
+            whiteTexture,
+            ordersPosition[i].x,
+            ordersPosition[i].y,
+            inventorySlotSize.x,
+            inventorySlotSize.y
+          );
+          textRenderer.draw(
+            batch,
+            gameState.currentOrders[i],
+            ordersPosition[i].x - Dimension.WORLD_WIDTH / 2 + 30,
+            ordersPosition[i].y,
+            15
+          );
+        }
+
         // draw slots
         batch.setColor(0.3, 0.3, 0.3, 1);
         for (let i = 0; i < inventoriesPosition.length; i++) {
@@ -415,28 +467,28 @@ const createGameScreen = async (
           textRenderer.draw(
             batch,
             gameState.inventories[i].code,
-            i * 100 - WORLD_WIDTH / 2 + 40,
-            50,
+            inventoriesPosition[i].x - Dimension.WORLD_WIDTH / 2 + 30,
+            inventoriesPosition[i].y,
             15
           );
           textRenderer.draw(
             batch,
             `x${gameState.inventories[i].amount}`,
-            i * 100 - WORLD_WIDTH / 2 + 40,
-            80,
-            20
+            inventoriesPosition[i].x - Dimension.WORLD_WIDTH / 2 + 30,
+            inventoriesPosition[i].y + 30,
+            15
           );
         }
 
         //draw plates
         batch.setColor(0.3, 0.3, 0.3, 1);
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < platesPosition.length; i++) {
           batch.draw(
             whiteTexture,
-            80 + i * 160,
-            (WORLD_HEIGHT - plateSize.y) / 2 - 100,
-            plateSize.x,
-            plateSize.y
+            platesPosition[i].x,
+            platesPosition[i].y,
+            50,
+            50
           );
         }
 
@@ -446,43 +498,52 @@ const createGameScreen = async (
             textRenderer.draw(
               batch,
               gameState.plates[i][y],
-              i * 160 - WORLD_WIDTH / 2 + 120,
-              (WORLD_HEIGHT - plateSize.y) / 2 - 100 + y * 30,
-              20
+              platesPosition[i].x - Dimension.WORLD_WIDTH / 2 + 25,
+              platesPosition[i].y + y * 15,
+              15
             );
           }
         }
 
         batch.setColor(0.2, 0.2, 0.2, 1);
         // draw tools
-        for (let i = 0; i < gameState.tools.length; i++) {
+        for (let i = 0; i < gameState.mapData.tools.length; i++) {
           batch.draw(
             whiteTexture,
             toolsPosition[i].x,
             toolsPosition[i].y,
-            toolSize.x,
-            toolSize.y
+            toolsPosition[i].size.x,
+            toolsPosition[i].size.y
           );
 
           textRenderer.draw(
             batch,
             gameState.tools[i].code,
-            i * (toolSize.x + 50) - 80,
-            WORLD_HEIGHT / 4 - 100
+            toolsPosition[i].x -
+              Dimension.WORLD_WIDTH / 2 +
+              toolsPosition[i].size.x / 2,
+            toolsPosition[i].y - 50,
+            30
           );
 
           textRenderer.draw(
             batch,
             gameState.tools[i].itemCode.toString(),
-            i * (toolSize.x + 50) - 80,
-            WORLD_HEIGHT / 4 - 20
+            toolsPosition[i].x -
+              Dimension.WORLD_WIDTH / 2 +
+              +toolsPosition[i].size.x / 2,
+            toolsPosition[i].y + toolsPosition[i].size.y / 3,
+            30
           );
 
           textRenderer.draw(
             batch,
             gameState.tools[i].remainingActiveTime.toString(),
-            i * (toolSize.x + 50) - 80,
-            WORLD_HEIGHT / 4 + 60
+            toolsPosition[i].x -
+              Dimension.WORLD_WIDTH / 2 +
+              +toolsPosition[i].size.x / 2,
+            toolsPosition[i].y + toolsPosition[i].size.y,
+            30
           );
         }
 
@@ -507,6 +568,23 @@ const createGameScreen = async (
             }
           }
         }
+
+        // draw totalTime
+        batch.setColor(0, 0, 0, 1);
+
+        batch.draw(
+          whiteTexture,
+          Dimension.WORLD_WIDTH / 2 - 40,
+          Dimension.WORLD_HEIGHT / 2 - 20,
+          80,
+          40
+        );
+        textRenderer.draw(
+          batch,
+          gameState.totalTime.toFixed(2).toString(),
+          0,
+          Dimension.WORLD_HEIGHT / 2 - 20
+        );
 
         batch.end();
       });

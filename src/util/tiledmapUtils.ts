@@ -7,12 +7,9 @@ export const loadMap = async (jsonFile: string) => {
 
 export const loadInventory = (layerData: any): number => {
   if (layerData.objects.length === 0) return 0;
-  for (const obj of layerData.objects) {
-    if (obj.properties === undefined || obj.properties.length === 0) return 0;
-    for (const element of obj.properties) {
-      if (element.name === "slot") {
-        return element.value;
-      }
+  for (const element of layerData.properties) {
+    if (element.name === "slot") {
+      return element.value;
     }
   }
   return 0;
@@ -23,7 +20,7 @@ export const loadOrder = (layerData: any): string[] => {
   if (layerData.properties.length === 0) return returnList;
   for (const property of layerData.properties) {
     if (property.name === "order_list") {
-      const value = property.value.trim();
+      const value = property.value.trim().replaceAll(" ", "");
       return value.split(/[,.]/);
     }
   }

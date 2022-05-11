@@ -13,7 +13,7 @@ import {
 import Dimension from "../constant/constant";
 import createMenuScreen from "./createMenuScreen";
 
-const createTitleScreen = async (
+const createVictoryScreen = async (
   game: Game<void>,
   viewport: Viewport
 ): Promise<Screen<void>> => {
@@ -42,43 +42,14 @@ const createTitleScreen = async (
         Dimension.WORLD_WIDTH,
         Dimension.WORLD_HEIGHT
       );
-      textRenderer.draw(batch, "Cooking", 0, Dimension.WORLD_HEIGHT / 4, 80);
-      batch.setColor(0.3, 0.3, 0.3, 1);
-      batch.draw(
-        whiteTexture,
-        Dimension.WORLD_WIDTH / 2 - 100,
-        Dimension.WORLD_HEIGHT / 4 + 200,
-        200,
-        100
-      );
-      textRenderer.draw(
-        batch,
-        "Start",
-        0,
-        Dimension.WORLD_HEIGHT / 4 + 210,
-        50
-      );
+
       batch.end();
     },
     dispose() {
       inputHandler.cleanup();
     },
-    init() {
-      inputHandler.addEventListener("touchEnd", async () => {
-        if (
-          pointInRect(
-            inputHandler.getTouchedWorldCoord(),
-            Dimension.WORLD_WIDTH / 2 - 100,
-            Dimension.WORLD_HEIGHT / 4 + 200,
-            200,
-            100
-          )
-        ) {
-          game.setScreen(await createMenuScreen(game, viewport));
-        }
-      });
-    },
+    init() {},
   };
 };
 
-export default createTitleScreen;
+export default createVictoryScreen;
