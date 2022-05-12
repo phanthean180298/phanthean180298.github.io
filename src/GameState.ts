@@ -40,6 +40,7 @@ class GameState {
   cells: Cell[] = [];
   random: any;
   isProcessing = false;
+  isPause: Boolean = false;
 
   inventories: { code: string; amount: number }[] = [];
 
@@ -63,12 +64,13 @@ class GameState {
       remainingActiveTime: 0,
     }));
     this.plates = [];
-    this.inventories = [
-      { code: "beef", amount: 1 },
-      { code: "potato", amount: 2 },
-    ];
+    this.inventories = [];
 
     this.initBoard();
+  }
+
+  pauseGame() {
+    this.isPause = true;
   }
 
   initBoard() {
@@ -323,6 +325,9 @@ class GameState {
   }
 
   process(delta: number) {
+    if (this.isPause) {
+      return;
+    }
     this.totalTime += delta;
     this.tools = this.tools.map((tool) => {
       if (tool.remainingActiveTime === 0) return tool;

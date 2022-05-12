@@ -5,8 +5,6 @@ import {
   createViewport,
   Game,
 } from "gdxjs";
-import GameState from "./GameState";
-import createGameScreen from "./screen/createGameScreen";
 import createTitleScreen from "./screen/createTitleScreen";
 
 const WORLD_WIDTH = 600;
@@ -24,7 +22,7 @@ const init = async () => {
 
   const game = new Game<void>();
 
-  game.setScreen(await createGameScreen(game, viewport, 0));
+  game.setScreen(await createTitleScreen(game, viewport));
 
   createGameLoop((delta: any) => {
     game.update(delta);

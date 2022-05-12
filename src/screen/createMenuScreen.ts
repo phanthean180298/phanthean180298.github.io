@@ -11,14 +11,7 @@ import {
 } from "gdxjs";
 import Dimension from "../constant/constant";
 import createGameScreen from "./createGameScreen";
-
-const levels = [
-  { id: 1, name: "Vong 1", minTime: 0, receiveStarTime: 600 },
-  { id: 1, name: "Vong 2", minTime: 0, receiveStarTime: 600 },
-  { id: 1, name: "Vong 3", minTime: 0, receiveStarTime: 600 },
-  { id: 1, name: "Vong 4", minTime: 0, receiveStarTime: 600 },
-  { id: 1, name: "Vong 5", minTime: 0, receiveStarTime: 600 },
-];
+import levelHelpers, { Level } from "../util/levelHelpers";
 
 const createMenuScreen = async (
   game: Game<void>,
@@ -37,6 +30,7 @@ const createMenuScreen = async (
   );
   const batch = createBatch(gl);
   const levelBtnPositions: { x: number; y: number }[] = [];
+  const levels: Level[] = levelHelpers.levels;
 
   for (let i = 0; i < levels.length; i++) {
     levelBtnPositions.push({
@@ -56,7 +50,7 @@ const createMenuScreen = async (
           120
         )
       ) {
-        game.setScreen(await createGameScreen(game, viewport, i));
+        game.setScreen(await createGameScreen(game, viewport, levels[i].id));
       }
     }
   });
@@ -100,24 +94,26 @@ const createMenuScreen = async (
           280 + Math.floor(i / 3) * 140,
           20
         );
-        textRenderer.draw(
-          batch,
-          `Stars: ${
-            levels[i].minTime > 0
-              ? Math.floor(
-                  (600 - levels[i].minTime) / (levels[i].receiveStarTime / 3)
-                )
-              : 0
-          }`,
-          (i > 0 ? 100 + (i % 3) * 150 : 100) - Dimension.WORLD_WIDTH / 2 + 50,
-          320 + Math.floor(i / 3) * 140,
-          20
-        );
+        // textRenderer.draw(
+        //   batch,
+        //   `Stars: ${
+        //     levels[i].minTime > 0
+        //       ? Math.floor(
+        //           (600 - levels[i].minTime) / (levels[i].receiveStarTime / 3)
+        //         )
+        //       : 0
+        //   }`,
+        //   (i > 0 ? 100 + (i % 3) * 150 : 100) - Dimension.WORLD_WIDTH / 2 + 50,
+        //   320 + Math.floor(i / 3) * 140,
+        //   20
+        // );
       }
 
       batch.end();
     },
-    dispose() {},
+    dispose() {
+      inputHandler.cleanup();
+    },
     init() {},
   };
 };

@@ -61,7 +61,7 @@
                 {
                  "name":"order_list",
                  "type":"string",
-                 "value":"groundedBeef, searedBeef, meatball, slicedPotato, bakedPotato"
+                 "value":"slicedPotato"
                 }],
          "type":"objectgroup",
          "visible":true,

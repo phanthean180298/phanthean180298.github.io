@@ -61,7 +61,7 @@
                 {
                  "name":"order_list",
                  "type":"string",
-                 "value":"potatoChip, bakedPotato, steak, salad, mashedPotato, curry"
+                 "value":"potatoChip, bakedPotato, steak, salad, mashedPotato"
                 }],
          "type":"objectgroup",
          "visible":true,

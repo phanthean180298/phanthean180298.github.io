@@ -77,7 +77,6 @@ class ToolFormulaHelper {
   }
 
   search(itemCode: string, toolCode: string) {
-    console.log(itemCode);
     return this.formulas.find(
       (toolFormula) =>
         toolFormula.toolCode === toolCode && toolFormula.itemCode === itemCode
