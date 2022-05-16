@@ -6,10 +6,12 @@ import {
   Game,
 } from "gdxjs";
 import createTitleScreen from "./screen/createTitleScreen";
+import { dataHelper } from "./util/dataHelper";
+
+dataHelper.getTxt("/data/formula/items.txt").then(console.log);
 
 const WORLD_WIDTH = 600;
 const WORLD_HEIGHT = 1000;
-
 
 const init = async () => {
   const stage = createStage();
