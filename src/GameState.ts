@@ -4,7 +4,8 @@ import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
 import { ToolData } from "./util/tiledmapUtils";
 
 const tools = ["chop", "stove"];
-const inventorieTypes = ["potato", "beef", "lettuce"];
+export const inventorieTypes = ["beef", "lettuce", "potato"];
+export const currenciesTypes = ["red", "green", "yellow", "blue"];
 
 export const GRID_ROW = 5;
 export const GRID_COL = 5;
@@ -34,6 +35,12 @@ export interface MapData {
   tools: ToolData[];
   plateSlotAmount: number;
 }
+
+const itemPrices = [
+  { itemCode: "potato", price: [2], currency: ["yellow"] },
+  { itemCode: "beef", price: [2], currency: ["red"] },
+  { itemCode: "lettuce", price: [2], currency: ["green"] },
+];
 class GameState {
   tools: Tool[] = [];
   screen: string = "Title";
@@ -49,6 +56,12 @@ class GameState {
   currentOrders: string[] = [];
 
   totalTime: number = 0;
+  currencies: { code: string; amount: number }[] = [
+    { code: "red", amount: 0 },
+    { code: "green", amount: 0 },
+    { code: "yellow", amount: 0 },
+    { code: "blue", amount: 0 },
+  ];
 
   mapData: MapData = {
     orders: [],
@@ -132,6 +145,40 @@ class GameState {
     }
   };
 
+  earn(currencyCode: string, amount: number) {
+    this.currencies = this.currencies.map((c) => {
+      if (c.code === currencyCode) return { ...c, amount: c.amount + amount };
+      return c;
+    });
+  }
+
+  buy(itemCode: string) {
+    debugger;
+    const itemPrice = itemPrices.find((p) => p.itemCode === itemCode);
+    if (!itemPrice) return;
+    let _currencies: any[] = [];
+    for (let i = 0; i < itemPrice.currency.length; i++) {
+      const currency = this.currencies.find(
+        (c) => c.code === itemPrice.currency[i]
+      );
+      if (!currency || currency.amount < itemPrice.price[i]) return;
+      else
+        _currencies.push({
+          ...currency,
+          amount: currency.amount - itemPrice.price[i],
+        });
+    }
+    if (_currencies.length) {
+      this.currencies = this.currencies.map((cur) => {
+        if (!!_currencies.find((c) => c.code === cur.code)) {
+          return _currencies.find((c) => c.code === cur.code);
+        }
+        return cur;
+      });
+      this.grant(itemCode);
+    }
+  }
+
   async processPath(path: Vector2[]) {
     if (this.isProcessing || !this.isValidPath(this, path)) {
       return false;
@@ -139,10 +186,8 @@ class GameState {
 
     this.isProcessing = true;
     const _cell = this.getCell(path[0].x, path[0].y);
-    if (_cell.color < 3) {
-      this.grant(inventorieTypes[_cell.color], path.length);
-      this.totalTime += 5;
-    }
+    this.earn(currenciesTypes[_cell.color], path.length);
+    this.totalTime += 5;
 
     for (const node of path) {
       const cell = this.getCell(node.x, node.y);
@@ -330,8 +375,6 @@ class GameState {
     }
     this.totalTime += delta;
     this.tools = this.tools.map((tool) => {
-      if (tool.remainingActiveTime === 0) return tool;
-
       if (tool.remainingActiveTime - delta <= 0) {
         tool.remainingActiveTime = 0;
 

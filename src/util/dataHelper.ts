@@ -21,7 +21,6 @@ class DataHelper {
       return fetch(url).then((res) => res.text());
     }
     const fs = await getFs();
-    console.log(await fs.readdir("/data/formula"));
     const exists = await fs.exists(url);
     if (exists) {
       return await fs.readFile(url).then((data: any) => data.toString());

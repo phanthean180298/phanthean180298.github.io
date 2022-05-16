@@ -13,9 +13,11 @@ import {
 import Dimension from "../constant/constant";
 import GameState, {
   Cell,
+  currenciesTypes,
   GRID_COL,
   GRID_ROW,
   initialMapData,
+  inventorieTypes,
   MapData,
 } from "../GameState";
 import eventEmitter from "../util/eventEmitter";
@@ -36,8 +38,8 @@ const toolSize = new Vector2(120, 120);
 const gemColor = [
   { r: 1, g: 0, b: 0, a: 1 },
   { r: 0, g: 1, b: 0, a: 1 },
-  { r: 0, g: 0, b: 1, a: 1 },
   { r: 0.98, g: 0.73, b: 0, a: 1 },
+  { r: 0, g: 0, b: 1, a: 1 },
 ];
 
 const createGameScreen = async (
@@ -278,6 +280,26 @@ const createGameScreen = async (
     }
   };
 
+  let currenciesPosition: { x: number; y: number }[] = [];
+  if (currenciesTypes.length > 0) {
+    for (let i = 0; i < currenciesTypes.length; i++) {
+      currenciesPosition.push({
+        x: 30 + 60 * i,
+        y: Dimension.WORLD_HEIGHT / 2 - 20,
+      });
+    }
+  }
+
+  let commodityPosition: { x: number; y: number }[] = [];
+  if (inventorieTypes.length > 0) {
+    for (let i = 0; i < inventorieTypes.length; i++) {
+      commodityPosition.push({
+        x: WORLD_WIDTH / 2 + 50 + 60 * i,
+        y: Dimension.WORLD_HEIGHT / 2 - 20,
+      });
+    }
+  }
+
   let currentItem: string | null = null;
   const draggingPosition = new Vector2(0, 0);
 
@@ -408,6 +430,23 @@ const createGameScreen = async (
     }
   });
 
+  const getCommodityAt = (x: number, y: number): number | null => {
+    for (let i = 0; i < commodityPosition.length; i++) {
+      if (
+        pointInRect(
+          { x, y },
+          commodityPosition[i].x,
+          commodityPosition[i].y,
+          40,
+          40
+        )
+      ) {
+        return i;
+      }
+    }
+    return null;
+  };
+
   inputHandler.addEventListener("touchEnd", async () => {
     if (isVictoryModalShow) {
       if (pointInRect(inputHandler.getTouchedWorldCoord(), 50, 50, 100, 50)) {
@@ -433,6 +472,11 @@ const createGameScreen = async (
       let plateId = getPlateAt(x, y);
       if (plateId != null) {
         gameState.clearPlate(plateId);
+      }
+      let commodityId = getCommodityAt(x, y);
+      if (commodityId != null) {
+        console.log(commodityId);
+        gameState.buy(inventorieTypes[commodityId]);
       }
     }
   });
@@ -644,6 +688,42 @@ const createGameScreen = async (
           gameState.totalTime.toFixed(2).toString(),
           0,
           Dimension.WORLD_HEIGHT / 2 - 20
+        );
+      }
+
+      for (let i = 0; i < commodityPosition.length; i++) {
+        batch.setColor(0, 0, 0, 1);
+        batch.draw(
+          whiteTexture,
+          commodityPosition[i].x,
+          commodityPosition[i].y,
+          40,
+          40
+        );
+        textRenderer.draw(
+          batch,
+          inventorieTypes[i],
+          commodityPosition[i].x - WORLD_WIDTH / 2 + 20,
+          commodityPosition[i].y,
+          20
+        );
+      }
+
+      for (let i = 0; i < currenciesTypes.length; i++) {
+        batch.setColor(gemColor[i].r, gemColor[i].g, gemColor[i].b, 1);
+        batch.draw(
+          whiteTexture,
+          currenciesPosition[i].x,
+          currenciesPosition[i].y,
+          40,
+          40
+        );
+        textRenderer.draw(
+          batch,
+          gameState.currencies[i].amount.toString(),
+          currenciesPosition[i].x - WORLD_WIDTH / 2 + 20,
+          currenciesPosition[i].y,
+          20
         );
       }
 
