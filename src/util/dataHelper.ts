@@ -31,6 +31,10 @@ class DataHelper {
     await fs.writeFile(url, data);
     return data;
   }
+
+  async getFolderTree(folderName: string) {
+    const fs = await getFs();
+  }
 }
 
 export const dataHelper = new DataHelper();

@@ -36,16 +36,6 @@ body,
   height: 100%;
 }
 
-.box {
-  height: 100%;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.5em;
-  background-color: #d9d9d9;
-}
-
 .container {
   display: flex;
   flex: 1;
@@ -88,4 +78,16 @@ body,
   flex-direction: row;
   justify-content: flex-start;
   align-items: flex-start;
+}
+
+.screen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.navigation {
+  font-size: 5px;
+  padding: 20px;
+  background-color: #787171;
 }

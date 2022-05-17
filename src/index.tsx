@@ -34,42 +34,55 @@
 // init();
 
 
-import React, { ReactNode, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
 import Editor from "@monaco-editor/react";
 import { dataHelper } from "./util/dataHelper";
 import './index.css'
 
+
+
 const initTreeState = [
-  { name: 'data', level: 1 },
-  { name: 'map', level: 2, parent: 'data' },
-  { name: 'formula', level: 2, parent: 'data' },
-  { name: 'items.txt', level: 3, parent: 'formula', isFile: true, url: 'data/formula/items.txt' },
-  { name: 'tools.txt', level: 3, parent: 'formula', isFile: true, url: 'data/formula/tools.txt' }
+  { name: 'map', level: 1, parent: 'data' },
+  { name: 'formula', level: 1, parent: 'data' },
+  { name: 'items.txt', level: 2, parent: 'formula', isFile: true, url: 'data/formula/items.txt' },
+  { name: 'tools.txt', level: 2, parent: 'formula', isFile: true, url: 'data/formula/tools.txt' }
 ];
 
-
-
 function App() {
-  const [value, setValue] = useState("// some comment")
-
+  const ref: any = useRef(null)
+  const [scriptName, setScriptName] = useState("...some comment")
+  const [value, setValue] = useState("")
 
   return (
-    <div className="content">
-      <div style={{ backgroundColor: '#787171', display: 'flex', flex: 1, flexDirection: 'column' }}>
-        {initTreeState.map(item =>
-        (<div style={{ paddingLeft: 30 * item.level }}>
-          <button onClick={() => dataHelper.getTxt(item && item.url || 'data/formula/items.txt').then(value => { if (value) setValue(value) })}>{item.name}</button>
-        </div>))}
+    <div className="screen">
+      <div className="navigation">
+        <button>Reset</button>
+        <button>Download</button>
       </div>
+      <div className="content">
+        <div style={{ backgroundColor: '#d9d9d9', display: 'flex', flex: 1, flexDirection: 'column', height: '100%' }}>
+          {initTreeState.map(item =>
+          (<div key={item.name} style={{ paddingLeft: 30 * item.level, fontSize: 20 }}>
+            <button onClick={() => dataHelper.getTxt(item.url || 'data/formula/items.txt').then(_value => {
+              if (_value) {
+                setScriptName(item.name)
+              }
+            })}>{item.name}</button>
+          </div>))}
+        </div>
 
-      <Editor
-        height="90vh"
-        defaultLanguage="json"
-        value={value}
-        onChange={(_value, ev) => setValue(value)}
-      />
+        <Editor
+          defaultValue="...some comment"
+          onChange={(_value, ev) => {
+            setValue(_value!)
+          }}
+          onMount={(editor) => {
+            ref.current = editor;
+          }}
+        />
+      </div>
     </div>
   );
 }
