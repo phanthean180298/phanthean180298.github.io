@@ -1,0 +1,3 @@
+searedBeef + mashedPotato = steak
+lettuce + mashedPotato = salad
+potato + beef = curry

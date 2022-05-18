@@ -1,0 +1,7 @@
+beef * 1 + chop * 1.5 = groundedBeef
+beef + stove * 2 = searedBeef
+groundedBeef + stove * 2 = meatball
+potato + chop * 1.5 = slicedPotato
+potato + stove * 2 = bakedPotato
+slicedPotato + stove * 2 = potatoChip
+bakedPotato + chop * 1.5 = mashedPotato
