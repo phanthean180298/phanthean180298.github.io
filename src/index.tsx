@@ -1,91 +1,77 @@
-// import {
-//   createBatch,
-//   createGameLoop,
-//   createStage,
-//   createViewport,
-//   Game,
-// } from "gdxjs";
-// import createTitleScreen from "./screen/createTitleScreen";
-
-// const WORLD_WIDTH = 600;
-// const WORLD_HEIGHT = 1000;
-
-// const init = async () => {
-//   const stage = createStage();
-//   const canvas = stage.getCanvas();
-//   const viewport = createViewport(canvas, WORLD_WIDTH, WORLD_HEIGHT);
-//   const gl = viewport.getContext();
-//   const camera = viewport.getCamera();
-
-//   const batch = createBatch(gl);
-
-//   const game = new Game<void>();
-
-//   game.setScreen(await createTitleScreen(game, viewport));
-
-//   createGameLoop((delta: any) => {
-//     game.update(delta);
-//     batch.setProjection(camera.combined);
-//     batch.begin();
-//     batch.end();
-//   });
-// };
-
-// init();
+import {
+  createBatch,
+  createGameLoop,
+  createStage,
+  createViewport,
+  Game,
+} from "gdxjs";
+import createTitleScreen from "./screen/createTitleScreen";
 
 
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from 'react'
 import ReactDOM from "react-dom";
+import DataEditor from "./screen/DataEditor";
+import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
 
-import Editor from "@monaco-editor/react";
-import { dataHelper } from "./util/dataHelper";
-import './index.css'
+const WORLD_WIDTH = 600;
+const WORLD_HEIGHT = 1000;
+
+const init = async () => {
+  const stage = createStage();
+  const canvas = stage.getCanvas();
+  const viewport = createViewport(canvas, WORLD_WIDTH, WORLD_HEIGHT);
+  const gl = viewport.getContext();
+  const camera = viewport.getCamera();
+
+  const batch = createBatch(gl);
+
+  const game = new Game<void>();
+
+  game.setScreen(await createTitleScreen(game, viewport));
+
+  createGameLoop((delta: any) => {
+    game.update(delta);
+    batch.setProjection(camera.combined);
+    batch.begin();
+    batch.end();
+  });
+};
 
 
+const App = () => {
+  const [showEditor, setShowEditor] = useState(false)
+  const [rootZIndex, setRootZIndex] = useState(-1)
 
-const initTreeState = [
-  { name: 'map', level: 1, parent: 'data' },
-  { name: 'formula', level: 1, parent: 'data' },
-  { name: 'items.txt', level: 2, parent: 'formula', isFile: true, url: 'data/formula/items.txt' },
-  { name: 'tools.txt', level: 2, parent: 'formula', isFile: true, url: 'data/formula/tools.txt' }
-];
+  const escFunction = useCallback((event: any) => {
+    if (event.keyCode === 27) {
+      setShowEditor(!showEditor)
+    }
+  }, [showEditor]);
 
-function App() {
-  const ref: any = useRef(null)
-  const [scriptName, setScriptName] = useState("...some comment")
-  const [value, setValue] = useState("")
+  useEffect(() => {
+    document.addEventListener("keydown", escFunction);
 
-  return (
-    <div className="screen">
-      <div className="navigation">
-        <button>Reset</button>
-        <button>Download</button>
-      </div>
-      <div className="content">
-        <div style={{ backgroundColor: '#d9d9d9', display: 'flex', flex: 1, flexDirection: 'column', height: '100%' }}>
-          {initTreeState.map(item =>
-          (<div key={item.name} style={{ paddingLeft: 30 * item.level, fontSize: 20 }}>
-            <button onClick={() => dataHelper.getTxt(item.url || 'data/formula/items.txt').then(_value => {
-              if (_value) {
-                setScriptName(item.name)
-              }
-            })}>{item.name}</button>
-          </div>))}
-        </div>
+    return () => {
+      document.removeEventListener("keydown", escFunction);
+    };
+  }, [escFunction]);
 
-        <Editor
-          defaultValue="...some comment"
-          onChange={(_value, ev) => {
-            setValue(_value!)
-          }}
-          onMount={(editor) => {
-            ref.current = editor;
-          }}
-        />
-      </div>
-    </div>
-  );
+  useEffect(() => {
+    if (!showEditor) {
+      init()
+      toolFormulaHelper.loadFormula()
+      itemFormulaHelper.loadFormula()
+      setRootZIndex(-1)
+    } else {
+      setRootZIndex(1)
+    }
+  }, [showEditor])
+
+  return (<div style={{ zIndex: rootZIndex, display: 'flex', flex: 1 }}>
+    {showEditor && <DataEditor />}
+  </div>)
 }
+
 
 const rootElement = document.getElementById("root");
 ReactDOM.render(<App />, rootElement);

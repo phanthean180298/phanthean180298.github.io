@@ -1,3 +1,5 @@
+import { data, dataHelper } from "./dataHelper";
+
 const TOOL_FORMULA_DATA = `beef * 1 + chop * 1.5 = groundedBeef
 beef + stove * 2 = searedBeef
 groundedBeef + stove * 2 = meatball
@@ -44,8 +46,45 @@ class ToolFormulaHelper {
   formulas: ToolFormula[] = [];
 
   constructor() {
-    const formulaData = TOOL_FORMULA_DATA.replaceAll(" ", "");
-    const formulaLines = formulaData.split("\n");
+    const formulaLines = TOOL_FORMULA_DATA.replaceAll(" ", "").split("\n");
+    for (const line of formulaLines) {
+      const sides = line.split("=");
+      if (sides.length < 2) continue;
+
+      const parts = sides[0].split("+");
+      if (parts.length < 2) continue;
+
+      const ingredientFragments = parts[0].split("*");
+      const itemCode = ingredientFragments[0] as string;
+      const itemAmount: number =
+        ingredientFragments.length > 1 ? parseInt(ingredientFragments[1]) : 1;
+
+      const toolFragments = parts[1].split("*");
+      if (toolFragments.length < 2) continue;
+
+      const toolCode = toolFragments[0];
+      const requireTime = parseFloat(toolFragments[1]);
+
+      const outputItemCodes = sides[1].split("+");
+
+      this.formulas.push({
+        itemCode,
+        itemAmount,
+        outputItemCodes,
+        requireTime,
+        toolCode,
+      });
+    }
+  }
+
+  async loadFormula() {
+    const data = await dataHelper.getTxt("data/formula/tools.txt", null);
+    if (!data) {
+      return;
+    }
+    const formulaLines = data.replaceAll(" ", "").split("\n");
+    this.formulas.length = 0;
+
     for (const line of formulaLines) {
       const sides = line.split("=");
       if (sides.length < 2) continue;
@@ -88,8 +127,7 @@ class ItemFormulaHelper {
   itemFormulas: ItemFormula[] = [];
 
   constructor() {
-    const itemFormulaData = ITEM_FORMULA_DATA.replaceAll(" ", "");
-    const itemFormulaLines = itemFormulaData.split("\n");
+    const itemFormulaLines = ITEM_FORMULA_DATA.replaceAll(" ", "").split("\n");
     for (const line of itemFormulaLines) {
       const sides = line.split("=");
       if (sides.length < 2) continue;
@@ -100,6 +138,27 @@ class ItemFormulaHelper {
         itemCodes,
         outputItemCode,
       });
+    }
+  }
+
+  async loadFormula() {
+    const data = await dataHelper.getTxt("data/formula/items.txt", null);
+    if (!data) {
+      return;
+    }
+    this.itemFormulas.length = 0;
+    const itemFormulaLines = data.replaceAll(" ", "").split("\n");
+    for (const line of itemFormulaLines) {
+      const sides = line.split("=");
+      if (sides.length < 2) continue;
+      const outputItemCode = sides[1];
+      const itemCodes = sides[0].split("+");
+      if (itemCodes.length < 2) continue;
+      this.itemFormulas.push({
+        itemCodes,
+        outputItemCode,
+      });
+      console.log("222", this.itemFormulas);
     }
   }
 

@@ -153,7 +153,6 @@ class GameState {
   }
 
   buy(itemCode: string) {
-    debugger;
     const itemPrice = itemPrices.find((p) => p.itemCode === itemCode);
     if (!itemPrice) return;
     let _currencies: any[] = [];

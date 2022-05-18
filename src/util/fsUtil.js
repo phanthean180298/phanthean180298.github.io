@@ -27,12 +27,12 @@ export const getFs = async () => {
   }
   fs = await configureFs();
   return {
-    exists: (url) => new Promise(resolve => fs.exists(url, resolve)),
+    exists: (url) => new Promise((resolve) => fs.exists(url, resolve)),
     mkdir: Promise.promisify(fs.mkdir),
     unlink: Promise.promisify(fs.unlink),
     readFile: Promise.promisify(fs.readFile),
     writeFile: Promise.promisify(fs.writeFile),
     rmdir: Promise.promisify(fs.rmdir),
-    readdir: Promise.promisify(fs.readdir)
+    readdir: Promise.promisify(fs.readdir),
   };
 };
