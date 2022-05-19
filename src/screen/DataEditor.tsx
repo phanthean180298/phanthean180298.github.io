@@ -45,13 +45,21 @@ function DataEditor() {
   }, [])
 
   const save = useCallback(() => {
-    dataHelper.saveFile(data.find((file: any) => file.name === scriptName)?.url, value)
+    const file = data.find((file: any) => file.name === scriptName);
+
+    setData(data.map((f: any) => {
+      if (f.name === scriptName) {
+        return { ...file, data: value };
+      }
+      return f
+    }))
+
+    dataHelper.saveFile(file, value)
   }, [data, scriptName, value])
 
   return (
     <div className="screen">
       <div className="navigation">
-        <button>Reset</button>
         <button onClick={download}>Download</button>
         <button onClick={save}>Save</button>
       </div>
@@ -77,7 +85,6 @@ function DataEditor() {
             </div>
           ))}
         </div>
-
         <Editor
           defaultValue="...some comment"
           onChange={(_value, ev) => {

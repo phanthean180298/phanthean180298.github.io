@@ -30,7 +30,6 @@ class LevelHelpers {
       }
       return l;
     });
-    console.log(this.levels);
   }
 }
 

@@ -1,6 +1,11 @@
 import { Vector2 } from "gdxjs";
+import { dataHelper } from "./dataHelper";
 
 export const loadMap = async (jsonFile: string) => {
+  const data = dataHelper.getJson(`data/maps/${jsonFile}.json`, null);
+  if (!!data) {
+    return data;
+  }
   const mapData = await fetch(jsonFile).then((res) => res.json());
   return mapData;
 };

@@ -341,9 +341,13 @@ class GameState {
     if (this.plates[plateIndex].length === 0) return;
     for (const item of this.plates[plateIndex]) {
       if (this.currentOrders.includes(item)) {
-        this.currentOrders = this.currentOrders.filter(
-          (order) => order !== item
-        );
+        for (let i = 0; i < this.currentOrders.length; i++) {
+          if (this.currentOrders[i] === item) {
+            this.currentOrders.splice(i, 1);
+            break;
+          }
+        }
+
         if (this.currentOrders.length === 0) {
           eventEmitter.emit("endGame");
         }

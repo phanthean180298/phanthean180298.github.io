@@ -12,6 +12,7 @@ import {
 } from "gdxjs";
 import Dimension from "../constant/constant";
 import createMenuScreen from "./createMenuScreen";
+import { itemFormulaHelper, toolFormulaHelper } from "../util/formulaHelpers";
 
 const createTitleScreen = async (
   game: Game<void>,
@@ -74,6 +75,8 @@ const createTitleScreen = async (
             100
           )
         ) {
+          await toolFormulaHelper.loadFormula();
+          await itemFormulaHelper.loadFormula();
           game.setScreen(await createMenuScreen(game, viewport));
         }
       });

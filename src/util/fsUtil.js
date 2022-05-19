@@ -22,9 +22,9 @@ const configureFs = () =>
   });
 
 export const getFs = async () => {
-  if (fs) {
-    return fs;
-  }
+  // if (fs) {
+  //   return fs;
+  // }
   fs = await configureFs();
   return {
     exists: (url) => new Promise((resolve) => fs.exists(url, resolve)),

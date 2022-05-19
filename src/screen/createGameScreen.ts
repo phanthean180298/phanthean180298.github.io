@@ -60,7 +60,7 @@ const createGameScreen = async (
 
   const inputHandler = createViewportAwareInputHandler(canvas, viewport);
 
-  const mapData = await loadMap(`./assets/maps/${mapIndex}.json`);
+  const mapData = await loadMap(mapIndex);
 
   let isVictoryModalShow = false;
 
@@ -475,7 +475,6 @@ const createGameScreen = async (
       }
       let commodityId = getCommodityAt(x, y);
       if (commodityId != null) {
-        console.log(commodityId);
         gameState.buy(inventorieTypes[commodityId]);
       }
     }

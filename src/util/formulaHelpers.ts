@@ -84,27 +84,20 @@ class ToolFormulaHelper {
     }
     const formulaLines = data.replaceAll(" ", "").split("\n");
     this.formulas.length = 0;
-
     for (const line of formulaLines) {
       const sides = line.split("=");
       if (sides.length < 2) continue;
-
       const parts = sides[0].split("+");
       if (parts.length < 2) continue;
-
       const ingredientFragments = parts[0].split("*");
       const itemCode = ingredientFragments[0] as string;
       const itemAmount: number =
         ingredientFragments.length > 1 ? parseInt(ingredientFragments[1]) : 1;
-
       const toolFragments = parts[1].split("*");
       if (toolFragments.length < 2) continue;
-
       const toolCode = toolFragments[0];
       const requireTime = parseFloat(toolFragments[1]);
-
       const outputItemCodes = sides[1].split("+");
-
       this.formulas.push({
         itemCode,
         itemAmount,
@@ -158,7 +151,6 @@ class ItemFormulaHelper {
         itemCodes,
         outputItemCode,
       });
-      console.log("222", this.itemFormulas);
     }
   }
 

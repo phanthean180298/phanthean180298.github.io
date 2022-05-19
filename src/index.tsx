@@ -9,9 +9,8 @@ import createTitleScreen from "./screen/createTitleScreen";
 
 
 import React, { useCallback, useEffect, useState } from 'react'
-import ReactDOM from "react-dom";
+import { createRoot } from 'react-dom/client';
 import DataEditor from "./screen/DataEditor";
-import { itemFormulaHelper, toolFormulaHelper } from "./util/formulaHelpers";
 
 const WORLD_WIDTH = 600;
 const WORLD_HEIGHT = 1000;
@@ -40,6 +39,7 @@ const init = async () => {
 
 const App = () => {
   const [showEditor, setShowEditor] = useState(false)
+  const [inited, setInited] = useState(false)
   const [rootZIndex, setRootZIndex] = useState(-1)
 
   const escFunction = useCallback((event: any) => {
@@ -59,13 +59,12 @@ const App = () => {
   useEffect(() => {
     if (!showEditor) {
       init()
-      toolFormulaHelper.loadFormula()
-      itemFormulaHelper.loadFormula()
       setRootZIndex(-1)
+      setInited(true)
     } else {
       setRootZIndex(1)
     }
-  }, [showEditor])
+  }, [showEditor, inited])
 
   return (<div style={{ zIndex: rootZIndex, display: 'flex', flex: 1 }}>
     {showEditor && <DataEditor />}
@@ -73,5 +72,6 @@ const App = () => {
 }
 
 
-const rootElement = document.getElementById("root");
-ReactDOM.render(<App />, rootElement);
+const container = document.getElementById('root');
+const root = createRoot(container!);
+root.render(<App />);

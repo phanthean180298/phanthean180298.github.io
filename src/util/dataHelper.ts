@@ -79,7 +79,6 @@ class DataHelper {
       }
     }
     this.data = _folderTree;
-    console.log(_folderTree, dataChildren);
     return _folderTree;
   }
 
@@ -93,9 +92,9 @@ class DataHelper {
     if (!fs) {
       fs = await getFs();
     }
-    if (process.env.NODE_ENV === "production") {
-      return fetch(url).then((res) => res.text());
-    }
+    // if (process.env.NODE_ENV === "production") {
+    //   return fetch(url).then((res) => res.text());
+    // }
     // const fs = await getFs();
     const exists = await fs.exists(url);
     if (exists) {
@@ -114,9 +113,9 @@ class DataHelper {
       fs = await getFs();
     }
 
-    if (process.env.NODE_ENV === "production") {
-      return fetch(url).then((res) => res.json());
-    }
+    // if (process.env.NODE_ENV === "production") {
+    //   return fetch(url).then((res) => res.json());
+    // }
     const exists = await fs.exists(url);
     if (exists) {
       return await fs
@@ -131,9 +130,9 @@ class DataHelper {
     return _data;
   }
 
-  async saveFile(url: string, content: any): Promise<any> {
+  async saveFile(file: any, content: any): Promise<any> {
     const fs = await getFs();
-    await fs.writeFile(url, content);
+    await fs.writeFile(file.url, content);
   }
 }
 
